@@ -35,7 +35,7 @@ gradlePlugin {
         create("build-timeout") {
             id = "io.github.gmazzo.build.timeout"
             displayName = name
-            implementationClass = "io.github.gmazzo.build.timeout.BuildTimeoutPlugin"
+            implementationClass = "io.github.gmazzo.buildtimeout.BuildTimeoutPlugin"
             description = project.description
             tags.addAll("build", "timeout")
         }
@@ -106,11 +106,11 @@ tasks.publish {
 }
 
 testing.suites.withType<JvmTestSuite> {
-    useKotlinTest()
+    useJUnitJupiter()
 }
 
 tasks.test {
-    systemProperty("projectRootDir", temporaryDir)
+    systemProperty("tempDir", temporaryDir)
     finalizedBy(tasks.jacocoTestReport)
 }
 

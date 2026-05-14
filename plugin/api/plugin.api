@@ -1,6 +1,15 @@
-public final class io/github/gmazzo/build/timeout/BuildTimeoutPlugin : org/gradle/api/Plugin {
-	public fun <init> ()V
-	public synthetic fun apply (Ljava/lang/Object;)V
-	public fun apply (Lorg/gradle/api/Project;)V
+public abstract interface class io/github/gmazzo/buildtimeout/BuildTimeoutExtension {
+	public abstract fun getTimeout ()Lorg/gradle/api/provider/Property;
+	public fun timeout (JLjava/time/temporal/ChronoUnit;)V
+	public fun timeout (JLjava/util/concurrent/TimeUnit;)V
+	public fun timeout (Ljava/time/Duration;)V
+	public static synthetic fun timeout$default (Lio/github/gmazzo/buildtimeout/BuildTimeoutExtension;JLjava/time/temporal/ChronoUnit;ILjava/lang/Object;)V
+	public static synthetic fun timeout$default (Lio/github/gmazzo/buildtimeout/BuildTimeoutExtension;JLjava/util/concurrent/TimeUnit;ILjava/lang/Object;)V
+	public fun timeout-LRDsOJo (J)V
+}
+
+public final class io/github/gmazzo/buildtimeout/BuildTimeoutPlugin : org/gradle/api/Plugin {
+	public fun <init> (Lorg/gradle/api/provider/ProviderFactory;Lorg/gradle/api/model/ObjectFactory;)V
+	public fun apply (Ljava/lang/Object;)V
 }
 

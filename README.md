@@ -21,4 +21,16 @@ Apply the plugin at the **root** project or its **settings**:
 plugins {
     id("io.github.gmazzo.build.timeout") version "<latest>"
 }
+
+buildTimeout.timeout(10.minutes)
+```
+Alternatively, you can set the timeout via a Gradle property:
+
+```bash
+./gradlew build -PbuildTimeout=10m
+```
+or via `gradle.properties`:
+
+```properties
+buildTimeout=10m
 ```
