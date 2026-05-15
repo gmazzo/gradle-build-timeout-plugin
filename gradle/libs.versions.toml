@@ -1,6 +1,6 @@
 [versions]
 java = "17"
-kotlin = "2.3.10"
+kotlin = "2.3.21"
 
 [plugins]
 dokka = { id = "org.jetbrains.dokka-javadoc", version = "2.2.0" }
