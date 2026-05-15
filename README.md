@@ -11,7 +11,7 @@
 A Gradle plugin that sets an overall run timeout for the build.
 
 > [!NOTE]
-> Gradle does support timeouts for [individual tasks](https://docs.gradle.org/current/userguide/controlling_task_execution.html#sec:task_timeouts), but [not for the entire build yet](https://github.com/Glovo/glovo-customer-android/pull/23012).
+> Gradle does support timeouts for [individual tasks](https://docs.gradle.org/current/userguide/controlling_task_execution.html#sec:task_timeouts), but [not for the entire build yet](https://github.com/gradle/gradle/issues/5181).
 
 # Usage
 
