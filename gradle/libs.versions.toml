@@ -3,7 +3,7 @@ java = "17"
 kotlin = "2.3.10"
 
 [plugins]
-dokka = { id = "org.jetbrains.dokka-javadoc", version = "2.1.0" }
+dokka = { id = "org.jetbrains.dokka-javadoc", version = "2.2.0" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-samReceiver = { id = "org.jetbrains.kotlin.plugin.sam.with.receiver", version.ref = "kotlin" }
 gitVersion = { id = "io.github.gmazzo.gitversion", version = "1.5.1" }
