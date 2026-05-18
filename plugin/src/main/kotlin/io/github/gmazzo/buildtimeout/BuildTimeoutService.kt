@@ -27,15 +27,25 @@ internal abstract class BuildTimeoutService :
 
     private val timeout = parameters.timeout.get().toKotlinDuration()
 
+    var started = false
+        private set
+
     var hasTimeout = false
         private set
 
     private val timeoutException
         get() = TimeoutException("Build timeout has been exceeded: $timeout")
 
-    fun start() {
-        logger.lifecycle("This build will timeout after $timeout")
-        timer.schedule(this, timeout.inWholeMilliseconds)
+    private fun start() {
+        if (!started) {
+            synchronized(this) {
+                if (!started) {
+                    started = true
+                    logger.lifecycle("This build will timeout after $timeout")
+                    timer.schedule(this, timeout.inWholeMilliseconds)
+                }
+            }
+        }
     }
 
     override fun run() {
@@ -44,7 +54,10 @@ internal abstract class BuildTimeoutService :
         val exception = timeoutException
         logger.error("Build timeout has been exceeded. Interrupting ${threadsToInterrupt.size} tasks", exception)
         with(threadsToInterrupt.iterator()) {
-            while (hasNext()) { next().interrupt(); remove() }
+            while (hasNext()) {
+                next().interrupt()
+                remove()
+            }
         }
         throw exception
     }
@@ -64,7 +77,10 @@ internal abstract class BuildTimeoutService :
     ) : Action<Task> {
 
         override fun execute(t: Task): Unit = with(service.get()) {
-            if (hasTimeout) { throw timeoutException }
+            start()
+            if (hasTimeout) {
+                throw timeoutException
+            }
             threadsToInterrupt.add(Thread.currentThread())
         }
 

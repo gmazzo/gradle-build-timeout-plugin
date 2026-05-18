@@ -65,8 +65,6 @@ public class BuildTimeoutPlugin @Inject constructor(
                     doLast(onTaskFinished)
                 }
             }
-
-            timeoutService.get().start()
         }
     }
 
