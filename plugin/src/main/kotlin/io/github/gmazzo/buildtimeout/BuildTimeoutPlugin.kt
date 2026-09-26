@@ -5,40 +5,38 @@ import kotlin.time.Duration
 import kotlin.time.toJavaDuration
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.configuration.BuildFeatures
 import org.gradle.api.initialization.Settings
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.plugins.ExtensionAware
+import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.newInstance
 import org.gradle.kotlin.dsl.registerIfAbsent
-import org.gradle.kotlin.dsl.the
 
 public class BuildTimeoutPlugin @Inject constructor(
     private val providers: ProviderFactory,
-    private val objects: ObjectFactory,
-) : Plugin<Any> {
+    objects: ObjectFactory,
+    features: BuildFeatures,
+) : Plugin<ExtensionAware> {
 
-    override fun apply(target: Any) {
-        when (target) {
-            is Gradle -> target.gradle.configure()
-            is Settings -> target.configure(target.gradle)
-            is Project -> target.configure(target.gradle)
+    private val isolatedProjects = features.isolatedProjects.active.get()
+    private val onTaskStarted: BuildTimeoutService.OnTaskStarted = objects.newInstance()
+    private val onTaskFinished: BuildTimeoutService.OnTaskFinished = objects.newInstance()
+
+    override fun apply(target: ExtensionAware) {
+        val gradle = when (target) {
+            is Gradle -> target
+            is Settings -> target.gradle
+            is Project -> target.gradle
             else -> error("Unsupported plugin target: $target")
         }
-    }
 
-    private fun ExtensionAware.configure(gradle: Gradle) {
-        gradle.apply<BuildTimeoutPlugin>()
+        val extension = target.extensions.create<BuildTimeoutExtension>("buildTimeout").apply {
 
-        val extension = gradle.the<BuildTimeoutExtension>()
-        extensions.add(BuildTimeoutExtension::class.java, "buildTimeout", extension)
-    }
-
-    private fun Gradle.configure() {
-        val extension = extensions.create("buildTimeout", BuildTimeoutExtension::class).apply {
             val buildTimeout = providers
                 .gradleProperty("buildTimeout")
                 .map(Duration::parse)
@@ -50,22 +48,30 @@ public class BuildTimeoutPlugin @Inject constructor(
 
         }
 
-        val timeoutService = gradle.sharedServices.registerIfAbsent("buildTimeoutService", BuildTimeoutService::class) {
-            parameters.timeout.set(extension.timeout)
-        }
+        val timeoutService = gradle.sharedServices
+            .registerIfAbsent("buildTimeoutService", BuildTimeoutService::class) {
+                parameters.timeout.value(extension.timeout)
+            }
 
-        val onTaskStarted: BuildTimeoutService.OnTaskStarted = objects.newInstance(timeoutService)
-        val onTaskFinished: BuildTimeoutService.OnTaskFinished = objects.newInstance(timeoutService)
+        when (target) {
+            is Project -> {
+                target.configureTasks(timeoutService)
 
-        projectsEvaluated {
-            allprojects {
-                tasks.configureEach {
-                    usesService(timeoutService)
-                    doFirst(onTaskStarted)
-                    doLast(onTaskFinished)
+                if (!isolatedProjects) {
+                    target.subprojects { configureTasks(timeoutService) }
                 }
             }
+
+            else -> gradle.lifecycle.beforeProject {
+                apply<BuildTimeoutPlugin>()
+            }
         }
+    }
+
+    private fun Project.configureTasks(timeoutService: Provider<BuildTimeoutService>) = tasks.configureEach {
+        usesService(timeoutService)
+        doFirst(onTaskStarted)
+        doLast(onTaskFinished)
     }
 
 }

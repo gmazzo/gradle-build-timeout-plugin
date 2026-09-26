@@ -1,18 +1,18 @@
 package io.github.gmazzo.buildtimeout
 
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeoutException
-import javax.inject.Inject
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toKotlinDuration
 import org.gradle.api.Action
 import org.gradle.api.Task
 import org.gradle.api.logging.Logging
 import org.gradle.api.provider.Property
-import org.gradle.api.provider.Provider
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
+import org.gradle.api.services.ServiceReference
 
 internal abstract class BuildTimeoutService :
     BuildService<BuildTimeoutService.Params>,
@@ -25,22 +25,20 @@ internal abstract class BuildTimeoutService :
 
     internal val threadsToInterrupt = ConcurrentLinkedQueue<Thread>()
 
-    private val timeout = parameters.timeout.get().toKotlinDuration()
+    private var startedAt: Long? = null
 
-    var started = false
-        private set
-
-    var hasTimeout = false
-        private set
+    private var timedOutAfter: Duration? = null
 
     private val timeoutException
-        get() = TimeoutException("Build timeout has been exceeded: $timeout")
+        get() = TimeoutException("Build timeout has been exceeded: $timedOutAfter")
 
     private fun start() {
-        if (!started) {
+        if (startedAt == null) {
             synchronized(this) {
-                if (!started) {
-                    started = true
+                if (startedAt == null) {
+                    startedAt = System.currentTimeMillis()
+                    val timeout = parameters.timeout.get().toKotlinDuration()
+
                     logger.lifecycle("This build will timeout after $timeout")
                     timer.schedule(this, timeout.inWholeMilliseconds)
                 }
@@ -49,10 +47,10 @@ internal abstract class BuildTimeoutService :
     }
 
     override fun run() {
-        hasTimeout = true
+        timedOutAfter = (System.currentTimeMillis() - startedAt!!).milliseconds
 
         val exception = timeoutException
-        logger.error("Build timeout has been exceeded. Interrupting ${threadsToInterrupt.size} tasks", exception)
+        logger.error("${exception.message}. Interrupting ${threadsToInterrupt.size} tasks", exception)
         with(threadsToInterrupt.iterator()) {
             while (hasNext()) {
                 next().interrupt()
@@ -62,6 +60,10 @@ internal abstract class BuildTimeoutService :
         throw exception
     }
 
+    init {
+        println("*** init BuildTimeoutService $this")
+    }
+
     override fun close() {
         logger.info("Timeout countdown has been dismissed")
         timer.cancel()
@@ -69,28 +71,31 @@ internal abstract class BuildTimeoutService :
     }
 
     interface Params : BuildServiceParameters {
-        val timeout: Property<Duration>
+        val timeout: Property<java.time.Duration>
     }
 
-    internal abstract class OnTaskStarted @Inject constructor(
-        private val service: Provider<BuildTimeoutService>
-    ) : Action<Task> {
+    internal abstract class OnTaskStarted : Action<Task> {
 
-        override fun execute(t: Task): Unit = with(service.get()) {
+        @get:ServiceReference
+        abstract val service: Property<BuildTimeoutService>
+
+        override fun execute(task: Task): Unit = with(service.get()) {
+            threadsToInterrupt.add(Thread.currentThread())
+
             start()
-            if (hasTimeout) {
+            if (timedOutAfter != null) {
                 throw timeoutException
             }
-            threadsToInterrupt.add(Thread.currentThread())
         }
 
     }
 
-    internal abstract class OnTaskFinished @Inject constructor(
-        private val service: Provider<BuildTimeoutService>
-    ) : Action<Task> {
+    internal abstract class OnTaskFinished : Action<Task> {
 
-        override fun execute(t: Task): Unit = with(service.get()) {
+        @get:ServiceReference
+        abstract val service: Property<BuildTimeoutService>
+
+        override fun execute(task: Task): Unit = with(service.get()) {
             threadsToInterrupt.remove(Thread.currentThread())
         }
 

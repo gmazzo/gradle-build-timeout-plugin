@@ -9,7 +9,8 @@ public abstract interface class io/github/gmazzo/buildtimeout/BuildTimeoutExtens
 }
 
 public final class io/github/gmazzo/buildtimeout/BuildTimeoutPlugin : org/gradle/api/Plugin {
-	public fun <init> (Lorg/gradle/api/provider/ProviderFactory;Lorg/gradle/api/model/ObjectFactory;)V
-	public fun apply (Ljava/lang/Object;)V
+	public fun <init> (Lorg/gradle/api/provider/ProviderFactory;Lorg/gradle/api/model/ObjectFactory;Lorg/gradle/api/configuration/BuildFeatures;)V
+	public synthetic fun apply (Ljava/lang/Object;)V
+	public fun apply (Lorg/gradle/api/plugins/ExtensionAware;)V
 }
 
